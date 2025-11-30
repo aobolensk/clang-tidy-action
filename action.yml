@@ -1,0 +1,31 @@
+name: 'Native Clang-Tidy Analysis'
+description: 'Run clang-tidy analysis without Docker'
+inputs:
+  build_dir:
+    description: 'Build directory for CMake'
+    required: false
+    default: 'build'
+  exclude:
+    description: 'Directories to exclude from analysis (space-separated)'
+    required: false
+    default: '3rdparty'
+  clang_tidy_version:
+    description: 'Clang-tidy version to use'
+    required: false
+    default: '21'
+outputs:
+  total_comments:
+    description: 'Total number of clang-tidy issues found'
+    value: ${{ steps.analyze.outputs.total_comments }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Run clang-tidy analysis
+      id: analyze
+      shell: bash
+      run: |
+        python3 "${{ github.action_path }}/action.py" \
+          --build-dir "${{ inputs.build_dir }}" \
+          --exclude "${{ inputs.exclude }}" \
+          --clang-tidy-version "${{ inputs.clang_tidy_version }}" \
+          --base-ref "${{ github.event.pull_request.base.ref }}"
