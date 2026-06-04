@@ -24,7 +24,32 @@ runs:
       id: analyze
       shell: bash
       run: |
-        python3 "${{ github.action_path }}/action.py" \
+        set -euo pipefail
+
+        action_path="${GITHUB_ACTION_PATH:-${{ github.action_path }}}"
+        if [[ ! -f "${action_path}/action.py" ]]; then
+          action_suffix="${action_path#*/_actions/}"
+          if [[ "${action_suffix}" != "${action_path}" ]]; then
+            candidates=("/__w/_actions/${action_suffix}")
+            if [[ -n "${RUNNER_WORKSPACE:-}" ]]; then
+              candidates+=("${RUNNER_WORKSPACE%/*}/_actions/${action_suffix}")
+            fi
+
+            for candidate in "${candidates[@]}"; do
+              if [[ -f "${candidate}/action.py" ]]; then
+                action_path="${candidate}"
+                break
+              fi
+            done
+          fi
+        fi
+
+        if [[ ! -f "${action_path}/action.py" ]]; then
+          echo "::error::Cannot locate action.py in ${action_path}"
+          exit 1
+        fi
+
+        python3 "${action_path}/action.py" \
           --build-dir "${{ inputs.build_dir }}" \
           --exclude "${{ inputs.exclude }}" \
           --clang-tidy-version "${{ inputs.clang_tidy_version }}" \
