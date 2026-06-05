@@ -1,0 +1,56 @@
+name: 'Native Clang-Tidy Analysis'
+description: 'Run clang-tidy analysis without Docker'
+inputs:
+  build_dir:
+    description: 'Build directory for CMake'
+    required: false
+    default: 'build'
+  exclude:
+    description: 'Directories to exclude from analysis (space-separated)'
+    required: false
+    default: '3rdparty'
+  clang_tidy_version:
+    description: 'Clang-tidy version to use'
+    required: false
+    default: '21'
+outputs:
+  total_comments:
+    description: 'Total number of clang-tidy issues found'
+    value: ${{ steps.analyze.outputs.total_comments }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Run clang-tidy analysis
+      id: analyze
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        action_path="${GITHUB_ACTION_PATH:-${{ github.action_path }}}"
+        if [[ ! -f "${action_path}/action.py" ]]; then
+          action_suffix="${action_path#*/_actions/}"
+          if [[ "${action_suffix}" != "${action_path}" ]]; then
+            candidates=("/__w/_actions/${action_suffix}")
+            if [[ -n "${RUNNER_WORKSPACE:-}" ]]; then
+              candidates+=("${RUNNER_WORKSPACE%/*}/_actions/${action_suffix}")
+            fi
+
+            for candidate in "${candidates[@]}"; do
+              if [[ -f "${candidate}/action.py" ]]; then
+                action_path="${candidate}"
+                break
+              fi
+            done
+          fi
+        fi
+
+        if [[ ! -f "${action_path}/action.py" ]]; then
+          echo "::error::Cannot locate action.py in ${action_path}"
+          exit 1
+        fi
+
+        python3 "${action_path}/action.py" \
+          --build-dir "${{ inputs.build_dir }}" \
+          --exclude "${{ inputs.exclude }}" \
+          --clang-tidy-version "${{ inputs.clang_tidy_version }}" \
+          --base-ref "${{ github.event.pull_request.base.ref }}"
