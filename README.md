@@ -24,11 +24,17 @@ jobs:
         run: cmake -S . -B build
 
       - name: Run clang-tidy
+        id: review
         uses: aobolensk/clang-tidy-action@v1
         with:
           build_dir: build
           exclude: 3rdparty
           clang_tidy_version: 21
+
+      - if: steps.review.outputs.total_comments > 0
+        run: |
+          echo "clang-tidy run has failed. See previous 'Run clang-tidy' stage logs"
+          exit 1
 ```
 
 ## Inputs
